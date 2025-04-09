@@ -1,0 +1,352 @@
+---
+title: "ELITE Portal Workshop: Download and Explore Data in RStudio"
+author: 
+- Melissa Klein (Sage Bionetworks)
+- Tanveer Talukdar (Sage Bionetworks)
+date: "`r Sys.Date()`"
+format: 
+  html: 
+    toc: true
+    toc-depth: 3
+    df-print: paged
+knit: (function(input_file, encoding) {
+   out_dir <- 'docs';
+   rmarkdown::render(input_file,
+     encoding=encoding,
+     output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+---
+
+```{r, set-opts, include=FALSE}
+knitr::opts_chunk$set(
+  eval = TRUE,
+  print.rows = 10
+)
+
+# Prevent individual IDs from printing out in scientific notation
+options(scipen = 999)
+```
+
+------------------------------------------------------------------------
+
+## Overview
+
+We will be working with metadata and metabolomics data from the Mouse M005 Metabolomics Study , which can be found [here on the ELITE Portal](https://eliteportal.synapse.org/Explore/Studies/DetailsPage/StudyDetails?studyKey=Mouse_M005_Study_Metabolomics). During this workshop we will use R to:
+
+1. Log into Synapse
+
+2. Download a singular data file (single-file download from Synapse)
+
+3. Bulk download metadata files
+
+4. Join metadata files
+
+5. Explore the data
+
+------------------------------------------------------------------------
+
+## Setup
+
+### Install and load packages
+
+If you haven't already, you will first need to install `synapser` (the [Synapse R client](https://r-docs.synapse.org/articles/synapser.html)), as well as the `tidyverse` family of packages. The "tidyverse" package is shorthand for installing a number of packages that we will need for this notebook (dplyr, ggplot2, purrr, readr, stringr, tibble). It also installs "forcats" and "tidyr", which are not going to be used in this notebook.
+
+```{r install-synapser, eval = FALSE}
+install.packages("synapser", repos = c("http://ran.synapse.org"))
+install.packages(c("tidyverse", "lubridate"))
+```
+
+Load libraries
+
+```{r load-libraries, message=FALSE, warning=TRUE}
+library(synapser)
+library(dplyr)
+library(purrr)
+library(readr)
+library(lubridate)
+library(stringr)
+library(tibble)
+library(ggplot2)
+```
+
+### Login to Synapse
+
+Next, you will need to log in to your Synapse account.
+
+#### Login Option 1: Synapser takes credentials from your Synapse web session
+
+If you are logged into the [Synapse](https://www.synapse.org/) web browser, `synapser` will automatically use your login credentials to log you in during your R session. All you have to do is call `synLogin()` from a script or the R console.
+
+```{r synlogin_run, include = FALSE}
+# For prettier rendered display: This executes the code without showing the
+# printed welcome statements. The next block will show the code but not run it.
+synLogin(authToken = "<paste your personal access token here>")
+```
+
+```{r synlogin, eval=FALSE}
+synLogin()
+```
+
+#### Login Option 2: Synapse PAT
+
+Follow these instructions to [generate a Personal Access Token](https://help.synapse.org/docs/Managing-Your-Account.2055405596.html#ManagingYourAccount-Loggingin), then paste the PAT into the code below. Make sure you scope your access token to allow you to View, Download, and Modify.
+
+**⚠ DO NOT put your Synapse access token in scripts that will be shared, or anyone with access to that script will be able to log in as you/with your access.**
+
+```{r eval=FALSE}
+synLogin(authToken = "<paste your personal access token here>")
+```
+
+For more information on managing Synapse credentials with `synapser`, see the documentation [here](https://r-docs.synapse.org/articles/manageSynapseCredentials.html).
+
+------------------------------------------------------------------------
+
+## Download Data
+
+While you can always download data from the ELITE Portal website via your web browser, it is usually faster and more convenient to download the data programmatically.
+
+### Download a Single File
+
+To download a single file from the ELITE Portal, you can click the linked file name to go to a page in the Synapse platform where that file is stored. Using the synID on that data file’s page, you can call the `synGet()` function from `synapser` to download the file.
+
+#### Exercise 1: Use [Explore Data](https://eliteportal.synapse.org/Explore/Data) to find metadata from the Mouse M005 Metabolomics study
+
+Let's filter this table where Study = "Mouse_M005_Study_metabolomics" and Resource Type = "metadata", which leaves us with 3 results.
+
+We will be looking at the last of the 3 results, `individual_non_human_M005_Longevity Consortium_11-11-2024_final.csv`. In the "id" column for the `individual_non_human_M005_Longevity Consortium_11-11-2024_final.csv` file, there is a unique Synapse ID (synID), `syn64020473`.
+
+We can use that synID to download the file. Some information about the file and its storage location within Synapse is printed to the R console when we call `synGet()`.
+
+```{r single-synGet, results = "hide"}
+individual_metadata_id <- "syn64020473"
+synGet(individual_metadata_id,
+       downloadLocation = "files/",
+       ifcollision = "overwrite.local") # Prevents making multiple copies
+```
+
+The argument `ifcollision = "overwrite.local"` means that instead of downloading the file and saving it as a new copy, it will overwrite the current file at that location if it already exists, to avoid cluttering your hard drive with multiple copies of the same file. Before downloading, `synGet` will check if the file on your hard drive is the same as the version on Synapse, and will only download from Synapse if the two files are different. 
+
+This is very useful for large files especially: you can ensure that you always have the latest copy of a file from Synapse, without having to re-download the file if you already have the current version on your hard drive.
+
+We can take a quick look at the file we just downloaded by calling a tibble object will print the first ten rows in a nice tidy output. Doing the same for a base R dataframe will print the whole thing until it runs out of memory. If you want to inspect a large dataframe, use `head(df)`.
+
+```{r print-individual_metadata}
+individual_metadata <- read_csv("files/individual_non_human_M005_Longevity Consortium_11-11-2024_final.csv", show_col_types = FALSE)
+head(individual_metadata)
+```
+
+### Bulk Download Files
+
+#### Exercise 2: Use [Explore Studies](https://eliteportal.synapse.org/Explore/Studies) to find all metadata files from the Mouse M005 Metabolomics Study
+
+Use the facets and search bar to look for data you want to download from the ELITE Portal. Once you’ve identified the files you want, click on the download arrow icon on the top right of the Explore Data table and select “Programmatic Options” from the drop-down menu.
+
+In the window that pops up, select the “R” tab from the top menu bar. This will display some R code that constructs a SQL query of the Synapse data table that drives the ELITE Portal. This query then allows us to download only the files that meet our search criteria.
+
+**We will download our files using two steps:**
+
+1.  We will use the `synTableQuery()` code the that portal provides us in order to download a CSV file that lists all of the files we want. This CSV file is a table, one row per file in the list, containing the Synapse ID, file name, annotations, etc associated with each file.
+
+    a.  This does NOT download the files themselves. It only fetches a list of the files plus their annotations for you.
+
+2.  We will call `synGet()` on each Synapse ID in the table to download the files.
+
+**Why is this two separate steps instead of just one?**
+
+Splitting this into steps can be extremely helpful for cases where you might not want to download all of the files back-to-back. For example, if the file sizes are very large or if you are downloading hundreds of files. Downloading the table first lets you: a) fetch helpful annotations about the files without downloading them first, and b) do things like loop through the list one by one, download a file, do some processing, and delete the file before downloading the next one to save hard drive space.
+
+**Now back to downloading our files...**
+
+The function `synTableQuery()` returns a Synapse object wrapper around the CSV file, which is automatically downloaded to a folder called `.synapseCache` in your home directory. You can use `query$filepath` to see the path to the file in the Synapse cache.
+
+```{r portal-query}
+# Download the results of the filtered table query
+query <- synTableQuery("SELECT * FROM syn52234677 WHERE ( ( \"Study\" = 'Mouse_M005_Study_Metabolomics' ) ) AND ( `resourceType` = 'metadata' )")
+read.table(query$filepath, sep = ",")
+
+# View the file path of the resulting csv
+query$filepath
+```
+
+We are then going to use `read_csv` (from the `readr` package) to read the csv file into R. We can explore the `download_table` object and see that it contains information on all of the ELITE Portal data files we want to download. Some columns like “id” and “parentId” contain information about where the file is in Synapse, and some columns contain ELITE Portal annotations for each file, like “dataType”, “specimenID”, and “assay”. This annotation table will later allow us to link downloaded files to additional metadata variables.
+
+```{r download-query-table}
+# read in the table query csv file
+download_table <- read_csv(query$filepath, show_col_types = FALSE)
+
+download_table
+```
+
+Let's look at a subset of columns that might be useful:
+
+```{r view_download_table}
+download_table %>% 
+  dplyr::select(id, name, Assays, metadataType, fileVersion)
+```
+
+**Tip:** Copy this file and save it somewhere memorable to have a complete record of all the files you are using and what version of each file was downloaded – for reproducibility!
+
+Finally, we use a mapping function from the `purrr` package to loop through the "id" column and apply the `synGet()` function to each file's synID. In this case, we use `purrr::walk()` because it lets us call `synGet()` for its side effect (downloading files to a location we specify), and returns nothing.
+
+```{r bulk-download-purrr, results="hide"}
+# loop through the column of synIDs and download each file
+purrr::walk(download_table$id, ~synGet(.x, downloadLocation = "files/", 
+                                       ifcollision = "overwrite.local"))
+```
+
+You can also do this as a `for` loop, i.e.:
+
+```{r bulk-download-for-loop, eval=FALSE}
+for (syn_id in download_table$id) {
+  synGet(syn_id,
+         downloadLocation = "files/",
+         ifcollision = "overwrite.local")
+}
+```
+
+Congratulations! You’ve just bulk downloaded files from the ELITE Portal!
+
+##### ✏ Note on download speeds
+
+For instances when you are downloading many large files, the R client performs substantially slower than the command line client or the Python client. In these cases, you can use the instructions and code snippets for the command line or Python client provided in the "Programmatic Options" menu.
+
+##### ✏ Note on file versions
+
+All files in the ELITE Portal are versioned, meaning that if the file represented by a particular synID changes, a new version will be created. You can access a specific version by using the `version` argument in `synGet()`. More info on version control in the AD Portal and the Synapse platform can be found [here](https://help.synapse.org/docs/Versioning-Files.2667708547.html).
+
+#### Exercise 3: Use [Explore Data](https://eliteportal.synapse.org/Explore/Data) to find *all* raw metabolomics files from the Mouse M005 Metabolomics Study.
+
+If we filter for data where Study = "Mouse_M005_Study_metabolomics", Data Type = "metabolomics", and Data Subtype = "raw", we get a list of 6,854 files.
+
+#### Synapse entity annotations
+
+We can use the function `synGetAnnotations` to view the annotations associated with any file *before* actually downloading the file.
+
+```{r json-single-file-annotations}
+# the synID of a random raw file from this list
+random_file <- "syn55892501"
+
+# extract the annotations as a nested list
+file_annotations <- synGetAnnotations(random_file)
+
+head(file_annotations)
+```
+
+#### Annotations during bulk download
+
+When bulk downloading many files, the best practice is to preserve the download manifest that is initially generated, which lists all the files, their synIDs, and all of their annotations. If using the Synapse R client, follow the instructions in the [Bulk download files](#bulk-download-files) section above.
+
+If we use the "Programmatic Options" tab in the ELITE Portal download menu to download all metabolomics files from the Mouse M005 Metabolomics Study, we would get a table query that looks like this:
+
+```{r all-metabolomics-portal-query}
+query <- synTableQuery("SELECT * FROM syn52234677 WHERE ( ( \"Study\" = 'Mouse_M005_Study_metabolomics' ) AND ( \"dataSubtype\" = 'raw' ) AND ( \"dataTypes\" HAS ( 'metabolomics' ) ) )")
+read.table(query$filepath, sep = ",")
+```
+
+As we saw previously, this downloads a csv file with the results of our ELITE Portal query. Opening that file lets us see which specimens are associated with which files:
+
+```{r read-annotations-table, warning = FALSE, message = FALSE}
+annotations_table <- read_csv(query$filepath, show_col_types = FALSE)
+
+annotations_table
+```
+
+You could then use `purrr::walk(download_table$id, ~synGet(.x, downloadLocation = <your-download-directory>))` to walk through the column of synIDs and download all of the files. However, when these are large files, it might be preferable to use the [Python client](https://python-docs.synapse.org/build/html/index.html) or [command line client](https://python-docs.synapse.org/build/html/CommandLineClient.html) for increased speed.
+
+*Note: `|>` is the base R pipe operator. If you are unfamiliar with the pipe, think of it as a shorthand for "take this (the preceding object) and do that (the subsequent command)". See [here](https://r4ds.hadley.nz/data-transform.html#sec-the-pipe) for more info on piping in R.*
+
+------------------------------------------------------------------------
+
+## Working with ELITE Portal metadata
+
+We have now downloaded all of the available Mouse M005 Metabolomics metadata files. For our next exercises we will read those files into R so we can work with them.
+
+We can see from the `download_table` we got during the bulk download step that we have four metadata files. Two of these should be the individual and biospecimen files, one of them is an assay metadata file, and the last is a file annotation template.
+
+```{r explore-download-table}
+download_table |> 
+  dplyr::select(name, metadataType, Assays)
+```
+
+We are going to read in the individual metadata (which we did separately before), the biospecimen metadata, and the metabolomics assay metadata.
+
+```{r read-metadata-files}
+# We already read in our individual metadata above when we downloaded a single file from the ELITE Portal
+
+# Biospecimen metadata
+biospecimen_metadata <- read_csv("files/biospecimen_non_human_M005_Longevity Consortium_11-11-2024_final.csv", show_col_types = FALSE)
+
+# Assay metadata
+assay_metadata <- read_csv("files/synapse_storage_manifest_assaymetabolomicstemplate.csv", show_col_types = FALSE)
+```
+
+### Verify file contents
+
+At this point we have downloaded and read in 3 metadata files into the variables: `individual_metadata`, `biospecimen_metadata`, and `assay_metadata`.
+
+Let's examine metadata files a bit before we begin our analyses.
+
+#### Assay Metadata
+
+The assay metadata contains information about how data was generated on each sample in the assay. Each specimenID represents a unique sample. We can use some tools from dplyr to explore the metadata.
+
+How many unique specimens were sequenced?
+
+```{r}
+n_distinct(assay_metadata$specimenID)
+```
+
+#### Biospecimen Metadata
+
+The biospecimen metadata contains specimen-level information, including organ and tissue the specimen was taken from, how it was prepared, etc. Each specimenID is mapped to an individualID.
+
+```{r view-biospecimen}
+head(biospecimen_metadata)
+```
+
+All specimens from the metabolomics assay metadata file should be in the biospecimen metadata file.
+
+```{r check-biospecimen}
+all(assay_metadata$specimenID %in% biospecimen_metadata$specimenID)
+```
+
+#### Individual Metadata
+
+The individual metadata contains information about all the individuals in the study, represented by unique individualIDs. For humans, this includes information on age, sex, race, diagnosis, etc. For non-humans, the individual metadata has information on species, life stage, taxon, and more.
+
+```{r view-individual-metadata}
+head(individual_metadata)
+```
+
+All individualIDs from the biospecimen metadata file should be in the individual metadata file
+
+```{r check-individual}
+all(biospecimen_metadata$individualID %in% individual_metadata$individualID)
+```
+
+How many different distinct species groups were sampled in this study?
+
+```{r species-groups}
+n_distinct(individual_metadata$speciesGroup)
+```
+
+### Joining metadata
+
+We use the three-file structure for our metadata because it allows us to store metadata for each study in a tidy format. Every line in the assay and biospecimen files represents a unique specimen, and every line in the individual file represents a unique individual. This means the files can be easily joined by specimenID and individualID to get all levels of metadata that apply to a particular data file. We will use the `left_join()` function from the `dplyr` package, and the base R pipe operator `|>`.
+
+
+```{r join-metadata}
+# join all the rows in the assay metadata that have a match in the biospecimen metadata
+joined_metadata <- assay_metadata |> 
+  
+  #join rows from biospecimen that match specimenID
+  left_join(biospecimen_metadata, by = "specimenID") |>
+  
+  # join rows from individual that match individualID
+  left_join(individual_metadata, by = "individualID")
+
+joined_metadata
+```
+
+We now have a very wide data frame that contains all the available metadata on each specimen in the metabolomics data from this study. This procedure can be used to join the three types of metadata files for every study in the ELITE Portal, allowing you to filter individuals and specimens as needed based on your analysis criteria.
+
+
