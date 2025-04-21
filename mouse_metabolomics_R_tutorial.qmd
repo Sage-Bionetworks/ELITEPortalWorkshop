@@ -2,7 +2,6 @@
 title: "ELITE Portal Workshop: Download and Explore Data in RStudio"
 author: 
 - Melissa Klein (Sage Bionetworks)
-- Tanveer Talukdar (Sage Bionetworks)
 date: "`r Sys.Date()`"
 format: 
   html: 
@@ -34,13 +33,11 @@ We will be working with metadata and metabolomics data from the Mouse M005 Metab
 
 1. Log into Synapse
 
-2. Download a singular data file (single-file download from Synapse)
+2. Download a singular data file
 
 3. Bulk download metadata files
 
 4. Join metadata files
-
-5. Explore the data
 
 ------------------------------------------------------------------------
 
@@ -79,7 +76,7 @@ If you are logged into the [Synapse](https://www.synapse.org/) web browser, `syn
 ```{r synlogin_run, include = FALSE}
 # For prettier rendered display: This executes the code without showing the
 # printed welcome statements. The next block will show the code but not run it.
-synLogin(authToken = "<paste your personal access token here>")
+synLogin(authToken = "*insert auth token here*")
 ```
 
 ```{r synlogin, eval=FALSE}
@@ -96,7 +93,7 @@ Follow these instructions to [generate a Personal Access Token](https://help.syn
 synLogin(authToken = "<paste your personal access token here>")
 ```
 
-For more information on managing Synapse credentials with `synapser`, see the documentation [here](https://r-docs.synapse.org/articles/manageSynapseCredentials.html).
+For more information on managing Synapse credentials with `synapser`, see our documentation [here](https://r-docs.synapse.org/articles/manageSynapseCredentials.html).
 
 ------------------------------------------------------------------------
 
@@ -106,7 +103,7 @@ While you can always download data from the ELITE Portal website via your web br
 
 ### Download a Single File
 
-To download a single file from the ELITE Portal, you can click the linked file name to go to a page in the Synapse platform where that file is stored. Using the synID on that data file’s page, you can call the `synGet()` function from `synapser` to download the file.
+To download a single file from the ELITE Portal, you can click the linked file name to go to a page in the Synapse platform where that file is stored. Using the synID on that data file’s page or on the portal, you can call the `synGet()` function from `synapser` to download the file.
 
 #### Exercise 1: Use [Explore Data](https://eliteportal.synapse.org/Explore/Data) to find metadata from the Mouse M005 Metabolomics study
 
@@ -127,7 +124,7 @@ The argument `ifcollision = "overwrite.local"` means that instead of downloading
 
 This is very useful for large files especially: you can ensure that you always have the latest copy of a file from Synapse, without having to re-download the file if you already have the current version on your hard drive.
 
-We can take a quick look at the file we just downloaded by calling a tibble object will print the first ten rows in a nice tidy output. Doing the same for a base R dataframe will print the whole thing until it runs out of memory. If you want to inspect a large dataframe, use `head(df)`.
+We can take a quick look at the file we just downloaded by calling a tibble object will print the first ten rows in a nice tidy output. Doing the same for a base R data frame will print the whole thing until it runs out of memory. If you want to inspect a large data frame, use `head(df)`.
 
 ```{r print-individual_metadata}
 individual_metadata <- read_csv("files/individual_non_human_M005_Longevity Consortium_11-11-2024_final.csv", show_col_types = FALSE)
@@ -138,7 +135,7 @@ head(individual_metadata)
 
 #### Exercise 2: Use [Explore Studies](https://eliteportal.synapse.org/Explore/Studies) to find all metadata files from the Mouse M005 Metabolomics Study
 
-Use the facets and search bar to look for data you want to download from the ELITE Portal. Once you’ve identified the files you want, click on the download arrow icon on the top right of the Explore Data table and select “Programmatic Options” from the drop-down menu.
+Use the facets and/or search bar to look for data you want to download from the ELITE Portal. Once you’ve identified the files you want, click on the download arrow icon on the top right of the Explore Data table and select “Programmatic Options” from the drop-down menu.
 
 In the window that pops up, select the “R” tab from the top menu bar. This will display some R code that constructs a SQL query of the Synapse data table that drives the ELITE Portal. This query then allows us to download only the files that meet our search criteria.
 
@@ -152,7 +149,7 @@ In the window that pops up, select the “R” tab from the top menu bar. This w
 
 **Why is this two separate steps instead of just one?**
 
-Splitting this into steps can be extremely helpful for cases where you might not want to download all of the files back-to-back. For example, if the file sizes are very large or if you are downloading hundreds of files. Downloading the table first lets you: a) fetch helpful annotations about the files without downloading them first, and b) do things like loop through the list one by one, download a file, do some processing, and delete the file before downloading the next one to save hard drive space.
+Splitting this into two steps can be extremely helpful for cases where you might not want to download all of the files back-to-back. For example, if the file sizes are very large or if you are downloading hundreds of files. Downloading the table first lets you: a) fetch helpful annotations about the files without downloading them first, and b) do things like loop through the list one by one, download a file, do some processing, and delete the file before downloading the next one to save hard drive space.
 
 **Now back to downloading our files...**
 
@@ -211,7 +208,7 @@ For instances when you are downloading many large files, the R client performs s
 
 ##### ✏ Note on file versions
 
-All files in the ELITE Portal are versioned, meaning that if the file represented by a particular synID changes, a new version will be created. You can access a specific version by using the `version` argument in `synGet()`. More info on version control in the AD Portal and the Synapse platform can be found [here](https://help.synapse.org/docs/Versioning-Files.2667708547.html).
+All files in the ELITE Portal are versioned, meaning that if the file represented by a particular synID changes, a new version will be created. You can access a specific version by using the `version` argument in `synGet()`. More info on version control in the ELITE Portal and the Synapse platform can be found [here](https://help.synapse.org/docs/Versioning-Files.2667708547.html).
 
 #### Exercise 3: Use [Explore Data](https://eliteportal.synapse.org/Explore/Data) to find *all* raw metabolomics files from the Mouse M005 Metabolomics Study.
 
@@ -250,7 +247,7 @@ annotations_table <- read_csv(query$filepath, show_col_types = FALSE)
 annotations_table
 ```
 
-You could then use `purrr::walk(download_table$id, ~synGet(.x, downloadLocation = <your-download-directory>))` to walk through the column of synIDs and download all of the files. However, when these are large files, it might be preferable to use the [Python client](https://python-docs.synapse.org/build/html/index.html) or [command line client](https://python-docs.synapse.org/build/html/CommandLineClient.html) for increased speed.
+You could then use `purrr::walk(download_table$id, ~synGet(.x, downloadLocation = <your-download-directory>))` to walk through the column of synIDs and download all of the files. However, when these are larger files, it might be preferable to use the [Python client](https://python-docs.synapse.org/build/html/index.html) or [command line client](https://python-docs.synapse.org/build/html/CommandLineClient.html) for increased speed.
 
 *Note: `|>` is the base R pipe operator. If you are unfamiliar with the pipe, think of it as a shorthand for "take this (the preceding object) and do that (the subsequent command)". See [here](https://r4ds.hadley.nz/data-transform.html#sec-the-pipe) for more info on piping in R.*
 
@@ -260,14 +257,14 @@ You could then use `purrr::walk(download_table$id, ~synGet(.x, downloadLocation 
 
 We have now downloaded all of the available Mouse M005 Metabolomics metadata files. For our next exercises we will read those files into R so we can work with them.
 
-We can see from the `download_table` we got during the bulk download step that we have four metadata files. Two of these should be the individual and biospecimen files, one of them is an assay metadata file, and the last is a file annotation template.
+We can see from the `download_table` we got during the bulk download step that we have three metadata files. One these should be the individual metadata, one biospecimen, and one of them is an assay metadata file.
 
 ```{r explore-download-table}
 download_table |> 
   dplyr::select(name, metadataType, Assays)
 ```
 
-We are going to read in the individual metadata (which we did separately before), the biospecimen metadata, and the metabolomics assay metadata.
+We have already read in the individual metadata, and now we are going to read in the biospecimen metadata and the metabolomics assay metadata.
 
 ```{r read-metadata-files}
 # We already read in our individual metadata above when we downloaded a single file from the ELITE Portal
@@ -283,7 +280,7 @@ assay_metadata <- read_csv("files/synapse_storage_manifest_assaymetabolomicstemp
 
 At this point we have downloaded and read in 3 metadata files into the variables: `individual_metadata`, `biospecimen_metadata`, and `assay_metadata`.
 
-Let's examine metadata files a bit before we begin our analyses.
+Let's examine metadata files a bit more.
 
 #### Assay Metadata
 
@@ -348,5 +345,3 @@ joined_metadata
 ```
 
 We now have a very wide data frame that contains all the available metadata on each specimen in the metabolomics data from this study. This procedure can be used to join the three types of metadata files for every study in the ELITE Portal, allowing you to filter individuals and specimens as needed based on your analysis criteria.
-
-
