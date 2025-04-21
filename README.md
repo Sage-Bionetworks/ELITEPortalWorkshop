@@ -1,7 +1,7 @@
 # Exploring Data Programmatically in the ELITE Portal
 
 ## ELITE Portal Programmatic Tutorial to view on the web:
-- [Working with ELITE Portal Data in R](https://github.com/Sage-Bionetworks/ELITEPortalWorkshop/blob/main/ELITEPortal_WorkshopMETABOLOMICS.html)
+- [Working with ELITE Portal Data in R]([https://github.com/Sage-Bionetworks/ELITEPortalWorkshop/blob/main/ELITEPortal_WorkshopMETABOLOMICS.html](https://sage-bionetworks.github.io/ELITEPortalWorkshop/ELITEPortal_WorkshopMETABOLOMICS.html)
 
 ## Version of the tutorial you can download and run interactively from RStudio
 - [Quarto Notebook - Working with ELITE Portal Data in R](https://github.com/Sage-Bionetworks/ELITEPortalWorkshop/blob/main/mouse_metabolomics_R_tutorial.qmd)
