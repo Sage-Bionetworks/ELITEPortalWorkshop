@@ -300,10 +300,10 @@ The biospecimen metadata contains specimen-level information, including organ an
 head(biospecimen_metadata)
 ```
 
-All specimens from the metabolomics assay metadata file should be in the biospecimen metadata file.
+All specimens from the biospecimen metadata file should be in the metabolomics assay metadata file.
 
 ```{r check-biospecimen}
-all(assay_metadata$specimenID %in% biospecimen_metadata$specimenID)
+all(biospecimen_metadata$specimenID %in% assay_metadata$specimenID)
 ```
 
 #### Individual Metadata
@@ -314,10 +314,10 @@ The individual metadata contains information about all the individuals in the st
 head(individual_metadata)
 ```
 
-All individualIDs from the biospecimen metadata file should be in the individual metadata file
+All individualIDs from the individual metadata file should be in the biospecimen metadata file
 
 ```{r check-individual}
-all(biospecimen_metadata$individualID %in% individual_metadata$individualID)
+all(individual_metadata$individualID %in% biospecimen_metadata$individualID)
 ```
 
 How many different distinct species groups were sampled in this study?
